@@ -1,5 +1,9 @@
 language: generic
 sudo: required
+addons:
+  apt:
+    packages:
+    - libcurl
 dist: trusty
 env:
 - SWIFT_VERSION=swift-2.2-SNAPSHOT-2015-12-01-b
