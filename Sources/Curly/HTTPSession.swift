@@ -1,6 +1,19 @@
 import curl
 import Foundation
 
+#if os(Linux)
+import Glibc
+
+extension String {
+  func dataUsingEncoding(encoding: UInt) -> NSData? {
+    self.withCString { (bytes) in
+      return NSData(bytes: bytes, length: Int(strlen(bytes)))
+    }
+    return nil
+  }
+}
+#endif
+
 // FIXME: This is exploiting undefined behaviour to call a variadic C function
 /*@_silgen_name("curl_easy_setopt") private func curl_setopt_int(curl: UnsafeMutablePointer<Void>,
     _ option: CURLoption, _ value: Int)*/
@@ -43,8 +56,14 @@ public class HTTPSessionDataTask {
       return
     }
 
+#if os(Linux)
+    let urlString = URL.absoluteString!
+#else
+    let urlString = URL.absoluteString
+#endif
+
     //curl_setopt_int(curl, CURLOPT_VERBOSE, 1)
-    URL.absoluteString.withCString { (data) -> Void in
+    urlString.withCString { (data) -> Void in
       curl_setopt_pointer(self.curl, CURLOPT_URL, UnsafeMutablePointer<Void>(data))
     }
 

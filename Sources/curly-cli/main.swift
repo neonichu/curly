@@ -1,6 +1,10 @@
 import Curly
 import Foundation
 
+#if os(Linux)
+import Glibc
+#endif
+
 public enum ContentfulError : ErrorType {
     case InvalidHTTPResponse(response: NSURLResponse?)
     case InvalidURL(string: String)
@@ -50,17 +54,25 @@ class Network {
     }
 }
 
+#if os(OSX)
 import AppKit
+
+NSApplicationLoad()
+#endif
 
 let urlString = Process.arguments.last
 let url = NSURL(string: urlString!)
 
-if url == nil || !url!.scheme.hasPrefix("http") {
+#if os(Linux)
+let valid = url == nil || !url!.scheme!.hasPrefix("http")
+#else
+let valid = url == nil || !url!.scheme.hasPrefix("http")
+#endif
+
+if valid {
   print("Usage: \(Process.arguments.first!) url")
   exit(1)
 }
-
-NSApplicationLoad()
 
 let network = Network()
 network.sessionConfigurator = { (config) in
@@ -74,4 +86,6 @@ network.fetch(url!).1.next { (data) in
     exit(1)
 }
 
+#if os(OSX)
 NSApp.run()
+#endif
