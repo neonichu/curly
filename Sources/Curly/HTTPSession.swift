@@ -3,13 +3,13 @@ import Foundation
 
 // FIXME: This is exploiting undefined behaviour to call a variadic C function
 /*@_silgen_name("curl_easy_setopt") private func curl_setopt_int(curl: UnsafeMutablePointer<Void>,
-    _ option: CURLoption, _ value: Int)
+    _ option: CURLoption, _ value: Int)*/
 @_silgen_name("curl_easy_setopt") private func curl_setopt_pointer(curl: UnsafeMutablePointer<Void>,
-    _ option: CURLoption, _ pointer: UnsafeMutablePointer<Void>)*/
-@_silgen_name("curl_easy_setopt") private func curl_setopt_string(curl: UnsafeMutablePointer<Void>,
-    _ option: CURLoption, _ string: String)
+    _ option: CURLoption, _ pointer: UnsafeMutablePointer<Void>)
 
 public class HTTPSessionConfiguration {
+  public var HTTPAdditionalHeaders = [String:String]()
+
   public class func defaultSessionConfiguration() -> HTTPSessionConfiguration {
     return HTTPSessionConfiguration()
   }
@@ -19,11 +19,13 @@ public typealias HTTPCompletionFunc = ((NSData?, NSURLResponse?, NSError?) -> Vo
 
 public class HTTPSessionDataTask {
   let completion: HTTPCompletionFunc
+  let configuration: HTTPSessionConfiguration
   let curl = curl_easy_init()
   let URL: NSURL
 
-  private init(URL: NSURL, completion: HTTPCompletionFunc) {
-  	self.completion = completion
+  private init(configuration: HTTPSessionConfiguration, URL: NSURL, completion: HTTPCompletionFunc) {
+    self.completion = completion
+    self.configuration = configuration
     self.URL = URL
   }
 
@@ -32,27 +34,37 @@ public class HTTPSessionDataTask {
   }
 
   private var error: NSError {
-  	return NSError(domain:"org.vu0.curly", code: 23, userInfo: nil)
+    return NSError(domain:"org.vu0.curly", code: 23, userInfo: nil)
   }
 
   private func perform() {
-  	if curl == nil {
-  	  completion(nil, nil, error)
-  	  return
-  	}
+    if curl == nil {
+      completion(nil, nil, error)
+      return
+    }
 
-  	//curl_setopt_int(curl, CURLOPT_VERBOSE, 1)
-    curl_setopt_string(curl, CURLOPT_URL, URL.absoluteString)
+    //curl_setopt_int(curl, CURLOPT_VERBOSE, 1)
+    URL.absoluteString.withCString { (data) -> Void in
+      curl_setopt_pointer(self.curl, CURLOPT_URL, UnsafeMutablePointer<Void>(data))
+    }
 
+    var headers: UnsafeMutablePointer<curl_slist> = nil
+    for header in configuration.HTTPAdditionalHeaders {
+      headers = curl_slist_append(headers, "\(header.0): \(header.1)")
+    }
+    curl_setopt_pointer(curl, CURLOPT_HTTPHEADER, headers)
+
+    var perform_result: CURLcode = CURLcode(0)
     let result = read_stdout() {
-      let _ = curl_easy_perform(self.curl)
+      perform_result = curl_easy_perform(self.curl)
     }
 
     if let result = result, data = result.dataUsingEncoding(NSUTF8StringEncoding) {
       let response = NSURLResponse(URL: URL, MIMEType: nil,
-      	expectedContentLength: data.length, textEncodingName: nil)
+        expectedContentLength: data.length, textEncodingName: nil)
       completion(data, response, nil)
     } else {
+      print(perform_result)
       completion(nil, nil, error)
     }
   }
@@ -70,6 +82,6 @@ public class HTTPSession {
   }
 
   public func dataTaskWithURL(url: NSURL, completion: HTTPCompletionFunc) -> HTTPSessionDataTask {
-    return HTTPSessionDataTask(URL: url, completion: completion)
+    return HTTPSessionDataTask(configuration: configuration, URL: url, completion: completion)
   }
 }

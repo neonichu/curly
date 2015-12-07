@@ -63,6 +63,9 @@ if url == nil || !url!.scheme.hasPrefix("http") {
 NSApplicationLoad()
 
 let network = Network()
+network.sessionConfigurator = { (config) in
+  config.HTTPAdditionalHeaders = [ "YOLO": "yes" ]
+}
 network.fetch(url!).1.next { (data) in
     print(NSString(data: data, encoding: NSUTF8StringEncoding)!)
     exit(0)
