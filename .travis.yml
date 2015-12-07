@@ -1,13 +1,16 @@
 language: generic
 sudo: required
-addons:
-  apt:
-    packages:
-    - libcurl
+#addons:
+#  apt:
+#    packages:
+#    - libcurl4-gnutls-dev
+#    - libcurl3
 dist: trusty
 env:
 - SWIFT_VERSION=swift-2.2-SNAPSHOT-2015-12-01-b
 install:
+- sudo apt-get install libcurl3 libcurl4-gnutls-dev
+- ls -ld /usr/lib/libcurl*
 - mkdir swift
 - curl https://swift.org/builds/ubuntu1404/$SWIFT_VERSION/$SWIFT_VERSION-ubuntu14.04.tar.gz -s | tar xz -C swift &> /dev/null
 script:
